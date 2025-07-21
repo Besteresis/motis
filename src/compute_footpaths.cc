@@ -65,6 +65,7 @@ elevator_footpath_map_t compute_footpaths(
   auto const matches = get_matches(tt, pl, w);
 
   fmt::println(std::clog, "  -> creating r-tree");
+  std::cout << "Hallo" << std::endl;
   auto const loc_rtree = [&]() {
     auto t = point_rtree<n::location_idx_t>{};
     for (auto i = n::location_idx_t{0U}; i != tt.n_locations(); ++i) {

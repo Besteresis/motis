@@ -1,0 +1,13 @@
+
+> ui@0.0.1 build
+> vite build
+
+▲ [WARNING] Cannot find base config file "./.svelte-kit/tsconfig.json" [tsconfig.json]
+
+    tsconfig.json:2:12:
+      2 │   "extends": "./.svelte-kit/tsconfig.json",
+        ╵              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+[31merror during build:
+Could not load svelte.config.js: config.kit.adapter should be an object with an "adapt" method. See https://svelte.dev/docs/kit/adapters
+[39m

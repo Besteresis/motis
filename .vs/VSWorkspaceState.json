@@ -1,0 +1,23 @@
+{
+  "OutputFoldersPerTargetSystem": {
+    "Local Machine": [
+      "build\\macos-x86_64-release",
+      "build\\macos-arm64-release",
+      "build\\amd64-release",
+      "build\\arm64-release",
+      "build\\sanitizer",
+      "build\\debug",
+      "build\\relwithdebinfo",
+      "build\\clang-tidy"
+    ]
+  },
+  "ExpandedNodes": [
+    "",
+    "\\deps",
+    "\\deps\\concurrentqueue",
+    "\\deps\\concurrentqueue\\build",
+    "\\deps\\concurrentqueue\\build\\msvc11"
+  ],
+  "SelectedNode": "\\build",
+  "PreviewInSolutionExplorer": false
+}
