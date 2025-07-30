@@ -12,7 +12,6 @@
 #include "utl/verify.h"
 
 #include "nigiri/clasz.h"
-#include "nigiri/routing/limits.h"
 
 #include "rfl.hpp"
 #include "rfl/yaml.hpp"
@@ -34,7 +33,7 @@ struct drop_trailing {
 public:
   template <typename StructType>
   static auto process(auto&& named_tuple) {
-    auto const handle_one = []<typename FieldType>(FieldType&& f) {
+    const auto handle_one = []<typename FieldType>(FieldType&& f) {
       if constexpr (FieldType::name() != "xml_content" &&
                     !rfl::internal::is_rename_v<typename FieldType::Type>) {
         return handle_one_field(std::move(f));
@@ -93,9 +92,6 @@ config config::read(std::filesystem::path const& p) {
 config config::read(std::string const& s) {
   auto c =
       rfl::yaml::read<config, drop_trailing, rfl::DefaultIfMissing>(s).value();
-  if (!c.limits_.has_value()) {
-    c.limits_.emplace(limits{});
-  }
   c.verify();
   return c;
 }
@@ -119,24 +115,16 @@ void config::verify() const {
               "feature ODM requires feature STREET_ROUTING");
   utl::verify(!has_elevators() || osr_footpath_,
               "feature ELEVATORS requires feature OSR_FOOTPATHS");
-  utl::verify(limits_.value().plan_max_search_window_minutes_ <=
-                  nigiri::routing::kMaxSearchIntervalSize.count(),
-              "plan_max_search_window_minutes limit cannot be above {}",
-              nigiri::routing::kMaxSearchIntervalSize.count());
 
   if (timetable_) {
-    for (auto const& [id, d] : timetable_->datasets_) {
-      utl::verify(!id.contains("_"), "dataset identifier may not contain '_'");
+    for (auto const& [_, d] : timetable_->datasets_) {
       if (d.rt_.has_value()) {
-        for (auto const& rt : *d.rt_) {
+        for (auto const& url : *d.rt_) {
           try {
-            boost::urls::url{rt.url_};
+            boost::urls::url{url.url_};
           } catch (std::exception const& e) {
-            throw utl::fail("{} is not a valid url: {}", rt.url_, e.what());
+            throw utl::fail("{} is not a valid url: {}", url.url_, e.what());
           }
-          utl::verify(rt.protocol_ != timetable::dataset::rt::protocol::auser ||
-                          timetable_->incremental_rt_update_,
-                      "VDV AUS requires incremental RT update scheme");
         }
       }
     }
@@ -185,14 +173,6 @@ bool config::has_gbfs_feeds() const {
 }
 
 bool config::has_odm() const { return odm_.has_value(); }
-
-std::size_t config::n_threads() const {
-  return server_
-      .and_then([](config::server const& s) {
-        return s.n_threads_ == 0U ? std::nullopt : std::optional{s.n_threads_};
-      })
-      .value_or(std::thread::hardware_concurrency());
-}
 
 std::optional<config::elevators> const& config::get_elevators() const {
   utl::verify(has_elevators(),

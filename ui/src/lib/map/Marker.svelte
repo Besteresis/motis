@@ -22,18 +22,18 @@
 	let initialized = false;
 
 	$effect(() => {
-		if (ctx.map && location.match) {
+		if (ctx.map && location.value.match) {
 			if (!initialized) {
 				marker = new maplibregl.Marker({
 					draggable,
 					color
 				})
-					.setLngLat(location.match)
+					.setLngLat(location.value.match)
 					.addTo(ctx.map)
 					.on('dragend', () => {
-						if (marker && location.match) {
+						if (marker && location.value.match) {
 							let x = posToLocation(marker.getLngLat(), level ?? 0);
-							location = x;
+							location.value = x.value;
 							location.label = x.label;
 						}
 					});
@@ -43,8 +43,14 @@
 	});
 
 	$effect(() => {
-		if (marker && location && location.match && location.match.lat && location.match.lon) {
-			marker.setLngLat(location.match);
+		if (
+			marker &&
+			location.value &&
+			location.value.match &&
+			location.value.match.lat &&
+			location.value.match.lon
+		) {
+			marker.setLngLat(location.value.match);
 		}
 	});
 

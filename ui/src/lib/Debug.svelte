@@ -12,14 +12,14 @@
 		TableRow
 	} from '$lib/components/ui/table';
 	import maplibregl from 'maplibre-gl';
-	import { transfers } from '$lib/api/openapi';
+	import { footpaths } from '$lib/openapi';
 	import Control from '$lib/map/Control.svelte';
 	import * as Card from '$lib/components/ui/card';
 	import Marker from '$lib/map/Marker.svelte';
 	import { posToLocation, type Location as ApiLocation } from '$lib/Location';
 	import geojson from 'geojson';
 	import Popup from '$lib/map/Popup.svelte';
-	import { client } from '$lib/api/openapi';
+	import { client } from '$lib/openapi';
 	import X from 'lucide-svelte/icons/x';
 	import LoaderCircle from 'lucide-svelte/icons/loader-circle';
 	import DateInput from './DateInput.svelte';
@@ -35,18 +35,6 @@
 				'Content-Type': 'application/json'
 			},
 			body: JSON.stringify(req)
-		});
-		return await response.json();
-	};
-
-	const get = async (path: string) => {
-		const response = await fetch(`${baseUrl}${path}`, {
-			method: 'GET',
-			mode: 'cors',
-			headers: {
-				'Access-Control-Allow-Origin': '*',
-				'Content-Type': 'application/json'
-			}
 		});
 		return await response.json();
 	};
@@ -75,9 +63,9 @@
 
 	const toLocation = (l: ApiLocation): Location => {
 		return {
-			lat: l.match!.lat,
-			lng: l.match!.lon,
-			level: l.match!.level ?? 0
+			lat: l.value.match!.lat,
+			lng: l.value.match!.lon,
+			level: l.value.match!.level ?? 0
 		};
 	};
 
@@ -87,12 +75,6 @@
 
 	const getMatches = async (bounds: maplibregl.LngLatBounds) => {
 		return await post('/api/matches', bounds.toArray().flat());
-	};
-
-	const getFlex = async (bounds: maplibregl.LngLatBounds) => {
-		const min = bounds.getSouthWest();
-		const max = bounds.getNorthEast();
-		return await get(`/api/debug/flex?min=${min.lat},${min.lng}&max=${max.lat},${max.lng}`);
 	};
 
 	const getElevators = async (bounds: maplibregl.LngLatBounds) => {
@@ -113,24 +95,19 @@
 
 	let {
 		bounds,
-		level,
-		zoom
+		level
 	}: {
 		bounds: maplibregl.LngLatBoundsLike | undefined;
 		level: number;
-		zoom: number;
 	} = $props();
 
 	let debug = $state(false);
 	let id = $state<string>();
 	let fps = $derived(
-		id && bounds && debug ? transfers<false>({ query: { id } }).then((x) => x.data) : undefined
+		id && bounds && debug ? footpaths<false>({ query: { id } }).then((x) => x.data) : undefined
 	);
 	let matches = $derived(
-		bounds && debug && zoom > 15 ? getMatches(maplibregl.LngLatBounds.convert(bounds)) : undefined
-	);
-	let flex = $derived(
-		bounds && debug ? getFlex(maplibregl.LngLatBounds.convert(bounds)) : undefined
+		bounds && debug ? getMatches(maplibregl.LngLatBounds.convert(bounds)) : undefined
 	);
 
 	const parseElevator = (e: { outOfService: string }) => {
@@ -145,7 +122,7 @@
 	let graph = $state<null | geojson.GeoJSON>(null);
 	let elevators = $state<null | geojson.GeoJSON>(null);
 	$effect(() => {
-		if (debug && bounds && zoom > 15) {
+		if (debug && bounds) {
 			getGraph(maplibregl.LngLatBounds.convert(bounds), level).then((response: geojson.GeoJSON) => {
 				graph = response;
 			});
@@ -161,10 +138,10 @@
 	let start = $state.raw<ApiLocation>();
 	let destination = $state.raw<ApiLocation>();
 	let route = $derived(
-		start?.match?.lat &&
-			start?.match.lon &&
-			destination?.match?.lat &&
-			destination?.match.lon &&
+		start?.value.match?.lat &&
+			start?.value.match.lon &&
+			destination?.value.match?.lat &&
+			destination?.value.match.lon &&
 			profile
 			? getRoute({
 					start: toLocation(start),
@@ -193,7 +170,7 @@
 {#snippet propertiesTable(_1: maplibregl.MapMouseEvent, _2: () => void, features: any)}
 	<Table>
 		<TableBody>
-			{#each Object.entries(features[0].properties) as [key, value], i (i)}
+			{#each Object.entries(features[0].properties) as [key, value]}
 				<TableRow>
 					<TableCell>{key}</TableCell>
 					<TableCell>
@@ -249,7 +226,7 @@
 					</TableHeader>
 					<TableBody>
 						{#if elevator.outOfService}
-							{#each elevator.outOfService as _, i (i)}
+							{#each elevator.outOfService as _, i}
 								<TableRow>
 									<TableCell>
 										<DateInput bind:value={elevator.outOfService[i][0]} />
@@ -323,9 +300,6 @@
 							<h2 class="ml-2 text-base font-semibold">
 								{f.place.name}
 								{f.place.track}
-								<span class="text-xs text-muted-foreground font-mono">
-									{f.place.stopId}
-								</span>
 								<span class="text-sm text-muted-foreground">Level: {f.place.level}</span>
 							</h2>
 							<Button
@@ -342,21 +316,14 @@
 								<TableRow>
 									<TableHead class="text-center">Station</TableHead>
 									<TableHead class="text-center">Default</TableHead>
-									{#if f.hasFootTransfers}
-										<TableHead class="text-center">Foot</TableHead>
-										<TableHead class="text-center">Foot Routed</TableHead>
-									{/if}
-									{#if f.hasWheelchairTransfers}
-										<TableHead class="text-center">Wheelchair</TableHead>
-										<TableHead class="text-center">Wheelchair Routed</TableHead>
-									{/if}
-									{#if f.hasCarTransfers}
-										<TableHead class="text-center">Car</TableHead>
-									{/if}
+									<TableHead class="text-center">Foot</TableHead>
+									<TableHead class="text-center">Foot Routed</TableHead>
+									<TableHead class="text-center">Wheelchair</TableHead>
+									<TableHead class="text-center">Wheelchair Routed</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
-								{#each f.transfers as x, i (i)}
+								{#each f.footpaths as x}
 									<TableRow>
 										<TableCell>
 											{x.to.name} <br />
@@ -378,84 +345,64 @@
 												</Button>
 											{/if}
 										</TableCell>
-										{#if f.hasFootTransfers}
-											<TableCell>
-												{#if x.foot !== undefined}
-													<Button
-														variant="outline"
-														onclick={() => {
-															start = posToLocation(f.place, f.place.level);
-															destination = posToLocation(x.to, x.to.level);
-															profile = 'foot';
-														}}
-													>
-														{x.foot}
-													</Button>
-												{/if}
-											</TableCell>
-											<TableCell>
-												{#if x.footRouted !== undefined}
-													<Button
-														variant="outline"
-														onclick={() => {
-															start = posToLocation(f.place, f.place.level);
-															destination = posToLocation(x.to, x.to.level);
-															profile = 'foot';
-														}}
-													>
-														{x.footRouted}
-													</Button>
-												{/if}
-											</TableCell>
-										{/if}
-										{#if f.hasWheelchairTransfers}
-											<TableCell>
-												{#if x.wheelchair !== undefined}
-													<Button
-														class={x.wheelchairUsesElevator ? 'text-red-500' : 'text-green-500'}
-														variant="outline"
-														onclick={() => {
-															start = posToLocation(f.place, f.place.level);
-															destination = posToLocation(x.to, x.to.level);
-															profile = 'wheelchair';
-														}}
-													>
-														{x.wheelchair}
-													</Button>
-												{/if}
-											</TableCell>
-											<TableCell>
-												{#if x.wheelchairRouted !== undefined}
-													<Button
-														class={x.wheelchairUsesElevator ? 'text-red-500' : 'text-green-500'}
-														variant="outline"
-														onclick={() => {
-															start = posToLocation(f.place, f.place.level);
-															destination = posToLocation(x.to, x.to.level);
-															profile = 'wheelchair';
-														}}
-													>
-														{x.wheelchairRouted}
-													</Button>
-												{/if}
-											</TableCell>
-										{/if}
-										{#if f.hasCarTransfers}
-											<TableCell>
-												{#if x.car !== undefined}
-													<Button
-														variant="outline"
-														onclick={() => {
-															start = posToLocation(f.place, f.place.level);
-															destination = posToLocation(x.to, x.to.level);
-															profile = 'car';
-														}}
-													>
-														{x.car}
-													</Button>
-												{/if}
-											</TableCell>
-										{/if}
+										<TableCell>
+											{#if x.foot !== undefined}
+												<Button
+													variant="outline"
+													onclick={() => {
+														start = posToLocation(f.place, f.place.level);
+														destination = posToLocation(x.to, x.to.level);
+														profile = 'foot';
+													}}
+												>
+													{x.foot}
+												</Button>
+											{/if}
+										</TableCell>
+										<TableCell>
+											{#if x.footRouted !== undefined}
+												<Button
+													variant="outline"
+													onclick={() => {
+														start = posToLocation(f.place, f.place.level);
+														destination = posToLocation(x.to, x.to.level);
+														profile = 'foot';
+													}}
+												>
+													{x.footRouted}
+												</Button>
+											{/if}
+										</TableCell>
+										<TableCell>
+											{#if x.wheelchair !== undefined}
+												<Button
+													class={x.wheelchairUsesElevator ? 'text-red-500' : 'text-green-500'}
+													variant="outline"
+													onclick={() => {
+														start = posToLocation(f.place, f.place.level);
+														destination = posToLocation(x.to, x.to.level);
+														profile = 'wheelchair';
+													}}
+												>
+													{x.wheelchair}
+												</Button>
+											{/if}
+										</TableCell>
+										<TableCell>
+											{#if x.wheelchairRouted !== undefined}
+												<Button
+													class={x.wheelchairUsesElevator ? 'text-red-500' : 'text-green-500'}
+													variant="outline"
+													onclick={() => {
+														start = posToLocation(f.place, f.place.level);
+														destination = posToLocation(x.to, x.to.level);
+														profile = 'wheelchair';
+													}}
+												>
+													{x.wheelchairRouted}
+												</Button>
+											{/if}
+										</TableCell>
 									</TableRow>
 								{/each}
 							</TableBody>
@@ -500,66 +447,6 @@
 				>
 					<Popup trigger="click" children={propertiesTable} />
 				</Layer>
-			</GeoJSON>
-		{/await}
-	{/if}
-
-	{#if flex}
-		{#await flex then f}
-			<GeoJSON id="flex" data={f}>
-				<Layer
-					onclick={(e) => {
-						const props = e.features![0].properties;
-						id = props.id;
-					}}
-					id="flex-location-groups"
-					type="circle"
-					filter={['all', ['==', '$type', 'Point']]}
-					layout={{}}
-					paint={{
-						'circle-color': '#00ff00',
-						'circle-radius': 5
-					}}
-				>
-					<Popup trigger="click" children={propertiesTable} />
-				</Layer>
-				<Layer
-					id="flex-areas"
-					type="fill"
-					layout={{}}
-					filter={['literal', true]}
-					paint={{
-						'fill-color': '#088',
-						'fill-opacity': 0.4,
-						'fill-outline-color': '#000'
-					}}
-				/>
-				<Layer
-					id="flex-areas-outline"
-					type="line"
-					layout={{}}
-					filter={['literal', true]}
-					paint={{
-						'line-color': '#000',
-						'line-width': 2
-					}}
-				/>
-				<Layer
-					id="flex-areas-labels"
-					type="symbol"
-					layout={{
-						'symbol-placement': 'point',
-						'text-field': ['get', 'name'],
-						'text-font': ['Noto Sans Display Regular'],
-						'text-size': 16
-					}}
-					filter={['literal', true]}
-					paint={{
-						'text-halo-width': 12,
-						'text-halo-color': '#fff',
-						'text-color': '#f00'
-					}}
-				/>
 			</GeoJSON>
 		{/await}
 	{/if}

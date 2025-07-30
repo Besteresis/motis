@@ -281,35 +281,30 @@ export const ModeSchema = {
 
   - \`WALK\`
   - \`BIKE\`
-  - \`RENTAL\` Experimental. Expect unannounced breaking changes (without version bumps) for all parameters and returned structs.
+  - \`RENTAL\` Experimental. Expect unannounced breaking changes (without version bumps).
   - \`CAR\`
-  - \`CAR_PARKING\` Experimental. Expect unannounced breaking changes (without version bumps) for all parameters and returned structs.
-  - \`CAR_DROPOFF\` Experimental. Expect unannounced breaking changes (without version bumps) for all perameters and returned structs.
-  - \`ODM\` on-demand taxis from the Prima+ÖV Project
-  - \`FLEX\` flexible transports
+  - \`CAR_PARKING\`
+  - \`ODM\`
 
 # Transit modes
 
-  - \`TRANSIT\`: translates to \`RAIL,TRAM,BUS,FERRY,AIRPLANE,COACH,CABLE_CAR,FUNICULAR,AREAL_LIFT,OTHER\`
+  - \`TRANSIT\`: translates to \`RAIL,SUBWAY,TRAM,BUS,FERRY,AIRPLANE,COACH\`
   - \`TRAM\`: trams
   - \`SUBWAY\`: subway trains
   - \`FERRY\`: ferries
   - \`AIRPLANE\`: airline flights
   - \`BUS\`: short distance buses (does not include \`COACH\`)
   - \`COACH\`: long distance buses (does not include \`BUS\`)
-  - \`RAIL\`: translates to \`HIGHSPEED_RAIL,LONG_DISTANCE,NIGHT_RAIL,REGIONAL_RAIL,REGIONAL_FAST_RAIL,METRO,SUBWAY\`
-  - \`METRO\`: metro trains 
+  - \`RAIL\`: translates to \`HIGHSPEED_RAIL,LONG_DISTANCE_RAIL,NIGHT_RAIL,REGIONAL_RAIL,REGIONAL_FAST_RAIL\`
+  - \`METRO\`: metro trains
   - \`HIGHSPEED_RAIL\`: long distance high speed trains (e.g. TGV)
   - \`LONG_DISTANCE\`: long distance inter city trains
   - \`NIGHT_RAIL\`: long distance night trains
   - \`REGIONAL_FAST_RAIL\`: regional express routes that skip low traffic stops to be faster
   - \`REGIONAL_RAIL\`: regional train
-  - \`CABLE_CAR\`: Cable tram. Used for street-level rail cars where the cable runs beneath the vehicle (e.g., cable car in San Francisco).
-  - \`FUNICULAR\`: Funicular. Any rail system designed for steep inclines.
-  - \`AREAL_LIFT\`: Aerial lift, suspended cable car (e.g., gondola lift, aerial tramway). Cable transport where cabins, cars, gondolas or open chairs are suspended by means of one or more cables.
 `,
     type: 'string',
-    enum: ['WALK', 'BIKE', 'RENTAL', 'CAR', 'CAR_PARKING', 'CAR_DROPOFF', 'ODM', 'FLEX', 'TRANSIT', 'TRAM', 'SUBWAY', 'FERRY', 'AIRPLANE', 'METRO', 'BUS', 'COACH', 'RAIL', 'HIGHSPEED_RAIL', 'LONG_DISTANCE', 'NIGHT_RAIL', 'REGIONAL_FAST_RAIL', 'REGIONAL_RAIL', 'CABLE_CAR', 'FUNICULAR', 'AREAL_LIFT', 'OTHER']
+    enum: ['WALK', 'BIKE', 'RENTAL', 'CAR', 'CAR_PARKING', 'ODM', 'TRANSIT', 'TRAM', 'SUBWAY', 'FERRY', 'AIRPLANE', 'METRO', 'BUS', 'COACH', 'RAIL', 'HIGHSPEED_RAIL', 'LONG_DISTANCE', 'NIGHT_RAIL', 'REGIONAL_FAST_RAIL', 'REGIONAL_RAIL', 'OTHER']
 } as const;
 
 export const VertexTypeSchema = {
@@ -383,10 +378,6 @@ Can be missing if neither real-time updates nor the schedule timetable contains 
 `,
             type: 'string'
         },
-        description: {
-            description: 'description of the location that provides more detailed information',
-            type: 'string'
-        },
         vertexType: {
             '$ref': '#/components/schemas/VertexType'
         },
@@ -408,24 +399,6 @@ Can be missing if neither real-time updates nor the schedule timetable contains 
             items: {
                 '$ref': '#/components/schemas/Alert'
             }
-        },
-        flex: {
-            description: 'for `FLEX` transports, the flex location area or location group name',
-            type: 'string'
-        },
-        flexId: {
-            description: 'for `FLEX` transports, the flex location area ID or location group ID',
-            type: 'string'
-        },
-        flexStartPickupDropOffWindow: {
-            description: 'Time that on-demand service becomes available',
-            type: 'string',
-            format: 'date-time'
-        },
-        flexEndPickupDropOffWindow: {
-            description: 'Time that on-demand service ends',
-            type: 'string',
-            format: 'date-time'
         }
     }
 } as const;
@@ -478,7 +451,7 @@ export const ReachableSchema = {
 export const StopTimeSchema = {
     description: 'departure or arrival event at a stop',
     type: 'object',
-    required: ['place', 'mode', 'realTime', 'headsign', 'agencyId', 'agencyName', 'agencyUrl', 'tripId', 'routeShortName', 'pickupDropoffType', 'cancelled', 'tripCancelled', 'source'],
+    required: ['place', 'mode', 'realTime', 'headsign', 'agencyId', 'agencyName', 'agencyUrl', 'tripId', 'routeShortName', 'pickupDropoffType', 'cancelled', 'source'],
     properties: {
         place: {
             '$ref': '#/components/schemas/Place',
@@ -524,11 +497,7 @@ For non-transit legs, null
             '$ref': '#/components/schemas/PickupDropoffType'
         },
         cancelled: {
-            description: 'Whether the departure/arrival is cancelled due to the realtime situation (either because the stop is skipped or because the entire trip is cancelled).',
-            type: 'boolean'
-        },
-        tripCancelled: {
-            description: 'Whether the entire trip is cancelled due to the realtime situation.',
+            description: 'Whether the departure/arrival is cancelled due to the realtime situation.',
             type: 'boolean'
         },
         source: {
@@ -688,24 +657,6 @@ This step is on an open area, such as a plaza or train platform,
 and thus the directions should say something like "cross"
 `,
             type: 'boolean'
-        },
-        toll: {
-            description: 'Indicates that a fee must be paid by general traffic to use a road, road bridge or road tunnel.',
-            type: 'boolean'
-        },
-        accessRestriction: {
-            description: `Experimental. Indicates whether access to this part of the route is restricted.
-See: https://wiki.openstreetmap.org/wiki/Conditional_restrictions
-`,
-            type: 'string'
-        },
-        elevationUp: {
-            type: 'integer',
-            description: 'incline in meters across this path segment'
-        },
-        elevationDown: {
-            type: 'integer',
-            description: 'decline in meters across this path segment'
         }
     }
 } as const;
@@ -926,14 +877,6 @@ to identify which effective fare leg this itinerary leg belongs to
             items: {
                 '$ref': '#/components/schemas/Alert'
             }
-        },
-        loopedCalendarSince: {
-            description: `If set, this attribute indicates that this trip has been expanded
-beyond the feed end date (enabled by config flag \`timetable.dataset.extend_calendar\`)
-by looping active weekdays, e.g. from calendar.txt in GTFS.
-`,
-            type: 'string',
-            format: 'date-time'
         }
     }
 } as const;
@@ -960,12 +903,13 @@ export const RiderCategorySchema = {
 export const FareMediaTypeSchema = {
     type: 'string',
     enum: ['NONE', 'PAPER_TICKET', 'TRANSIT_CARD', 'CONTACTLESS_EMV', 'MOBILE_APP'],
-    description: `- \`NONE\`: No fare media involved (e.g., cash payment)
-- \`PAPER_TICKET\`: Physical paper ticket
-- \`TRANSIT_CARD\`: Physical transit card with stored value
-- \`CONTACTLESS_EMV\`: cEMV (contactless payment)
-- \`MOBILE_APP\`: Mobile app with virtual transit cards/passes
-`
+    enumDescriptions: {
+        NONE: 'No fare media involved (e.g., cash payment)',
+        PAPER_TICKET: 'Physical paper ticket',
+        TRANSIT_CARD: 'Physical transit card with stored value',
+        CONTACTLESS_EMV: 'cEMV (contactless payment)',
+        MOBILE_APP: 'Mobile app with virtual transit cards/passes'
+    }
 } as const;
 
 export const FareMediaSchema = {
@@ -1037,11 +981,8 @@ An itinerary \`Leg\` references the index of the fare transfer and the index of 
         rule: {
             '$ref': '#/components/schemas/FareTransferRule'
         },
-        transferProducts: {
-            type: 'array',
-            items: {
-                '$ref': '#/components/schemas/FareProduct'
-            }
+        transferProduct: {
+            '$ref': '#/components/schemas/FareProduct'
         },
         effectiveFareLegProducts: {
             description: `Lists all valid fare products for the effective fare legs.
@@ -1055,10 +996,7 @@ and the inner array as OR (you can choose which ticket to buy)
             items: {
                 type: 'array',
                 items: {
-                    type: 'array',
-                    items: {
-                        '$ref': '#/components/schemas/FareProduct'
-                    }
+                    '$ref': '#/components/schemas/FareProduct'
                 }
             }
         }
@@ -1104,8 +1042,8 @@ export const ItinerarySchema = {
     }
 } as const;
 
-export const TransferSchema = {
-    description: 'transfer from one location to another',
+export const FootpathSchema = {
+    description: 'footpath from one location to another',
     type: 'object',
     required: ['to'],
     properties: {
@@ -1114,44 +1052,38 @@ export const TransferSchema = {
         },
         default: {
             type: 'number',
-            description: `optional; missing if the GTFS did not contain a transfer
-transfer duration in minutes according to GTFS (+heuristics)
+            description: `optional; missing if the GTFS did not contain a footpath
+footpath duration in minutes according to GTFS (+heuristics)
 `
         },
         foot: {
             type: 'number',
             description: `optional; missing if no path was found (timetable / osr)
-transfer duration in minutes for the foot profile
+footpath duration in minutes for the foot profile
 `
         },
         footRouted: {
             type: 'number',
             description: `optional; missing if no path was found with foot routing
-transfer duration in minutes for the foot profile
+footpath duration in minutes for the foot profile
 `
         },
         wheelchair: {
             type: 'number',
             description: `optional; missing if no path was found with the wheelchair profile 
-transfer duration in minutes for the wheelchair profile
+footpath duration in minutes for the wheelchair profile
 `
         },
         wheelchairRouted: {
             type: 'number',
             description: `optional; missing if no path was found with the wheelchair profile
-transfer duration in minutes for the wheelchair profile
+footpath duration in minutes for the wheelchair profile
 `
         },
         wheelchairUsesElevator: {
             type: 'boolean',
             description: `optional; missing if no path was found with the wheelchair profile
 true if the wheelchair path uses an elevator
-`
-        },
-        car: {
-            type: 'number',
-            description: `optional; missing if no path was found with car routing
-transfer duration in minutes for the car profile
 `
         }
     }

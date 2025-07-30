@@ -1,12 +1,12 @@
 <script lang="ts">
-	import { trips, type Mode, type TripSegment } from '$lib/api/openapi';
+	import { trips, type Mode, type TripSegment } from '$lib/openapi';
 	import { MapboxOverlay } from '@deck.gl/mapbox';
 	import { IconLayer } from '@deck.gl/layers';
 	import { createTripIcon } from '$lib/map/createTripIcon';
 	import { getColor } from '$lib/modeStyle';
 	import getDistance from '@turf/rhumb-distance';
 	import getBearing from '@turf/rhumb-bearing';
-	import polyline from '@mapbox/polyline';
+	import polyline from 'polyline';
 	import { formatTime } from '$lib/toDateTime';
 	import { lngLatToStr } from '$lib/lngLatToStr';
 	import maplibregl from 'maplibre-gl';

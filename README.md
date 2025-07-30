@@ -15,15 +15,15 @@ to provide optimized routing solutions.
 MOTIS currently supports the following input formats:
 
 - (One) **OpenStreetMap `osm.pbf`** file for the street network, addresses, indoor-routing, etc. 
-- (Multiple) **GTFS** (including GTFS Flex and GTFS Fares v2) feeds for static timetables
-- (Multiple) **GTFS-RT** feeds for real-time updates (delays, cancellations, track changes, service alerts)
+- (Multiple) **GTFS** feeds for static timetables
+- (Multiple) **GTFS-RT** feeds for real-time updates (delays, cancellations, track changes)
 - (Multiple) **GBFS** feeds for sharing mobility
 
-*Working on (funded by [NLnet](https://nlnet.nl/project/MOTIS/))*: NeTEx and SIRI
+*Planned*: GTFS-Flex, NeTEx and SIRI
 
 MOTIS provides an easy-to-use **REST API** (JSON via HTTP) with
 an [**OpenAPI specification**](https://redocly.github.io/redoc/?url=https://raw.githubusercontent.com/motis-project/motis/refs/heads/master/openapi.yaml) ([source](openapi.yaml))
-that allows you to generate clients for your favorite programming language. You may also directly use the pre-generated [JS client](https://www.npmjs.com/package/@motis-project/motis-client). Some more available client libraries are listed [over at Transitous](https://transitous.org/api/).
+that allows you to generate clients for your favorite programming language.
 
 
 # Features

@@ -10,7 +10,5 @@ constexpr auto const kOdmTransportModeId =
     static_cast<nigiri::transport_mode_id_t>(osr::kNumProfiles);
 constexpr auto const kGbfsTransportModeIdOffset =
     static_cast<nigiri::transport_mode_id_t>(osr::kNumProfiles + 1U);
-constexpr auto const kFlexModeIdOffset =
-    static_cast<nigiri::transport_mode_id_t>(1'000'000U);
 
 }  // namespace motis

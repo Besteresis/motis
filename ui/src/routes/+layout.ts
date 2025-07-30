@@ -1,4 +1,4 @@
-import { client } from '$lib/api/openapi';
+import { client } from '$lib/openapi';
 import { browser } from '$app/environment';
 import type { QuerySerializerOptions } from '@hey-api/client-fetch';
 

@@ -9,8 +9,8 @@
 2. Build the UI:
     ```shell
     motis$ cd ui
-    motis/ui$ pnpm install
-    motis/ui$ pnpm build
+    motis/ui$ npm install -f
+    motis/ui$ npm run build
     ```
    
 3. Move the UI build into the build folder of `motis`:

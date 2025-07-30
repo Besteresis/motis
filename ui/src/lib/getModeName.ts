@@ -1,4 +1,4 @@
-import type { Leg } from './api/openapi';
+import type { Leg } from './openapi';
 
 import { t } from './i18n/translation';
 
@@ -31,8 +31,6 @@ export const getModeName = (l: Leg) => {
 			return t.car;
 		case 'ODM':
 			return t.taxi;
-		case 'FLEX':
-			return 'Flex';
 		default:
 			return `${l.mode}`;
 	}

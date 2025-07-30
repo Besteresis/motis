@@ -3,10 +3,9 @@
 	import { RadioGroup, Item } from '$lib/components/ui/radio-group/index';
 	import { lngLatToStr } from '$lib/lngLatToStr';
 	import Control from '$lib/map/Control.svelte';
-	import { levels } from '$lib/api/openapi';
+	import { levels } from '$lib/openapi';
 	import type { LngLatBoundsLike } from 'maplibre-gl';
 	import maplibregl from 'maplibre-gl';
-	import { LEVEL_MIN_ZOOM } from './constants';
 
 	let {
 		bounds,
@@ -26,7 +25,7 @@
 	});
 
 	$effect(() => {
-		if (bounds && zoom && zoom > LEVEL_MIN_ZOOM) {
+		if (bounds && zoom && zoom > 17) {
 			const b = maplibregl.LngLatBounds.convert(bounds);
 			const min = lngLatToStr(b.getNorthWest());
 			const max = lngLatToStr(b.getSouthEast());
@@ -48,7 +47,7 @@
 {#if availableLevels.length > 1}
 	<Control position="bottom-right">
 		<RadioGroup class="flex flex-col items-end space-y-1" bind:value>
-			{#each availableLevels as l (l)}
+			{#each availableLevels as l}
 				<Label
 					for={`level-${l}`}
 					class="inline-flex items-center justify-center font-bold rounded-md border-2 border-muted bg-popover h-9 w-9 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-blue-600 hover:cursor-pointer"

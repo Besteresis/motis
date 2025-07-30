@@ -11,7 +11,7 @@
 		type PlanData,
 		type PlanError,
 		type PlanResponse
-	} from '$lib/api/openapi';
+	} from '$lib/openapi';
 	import Time from '$lib/Time.svelte';
 	import LoaderCircle from 'lucide-svelte/icons/loader-circle';
 	import { t } from '$lib/i18n/translation';
@@ -67,7 +67,7 @@
 	{:then r}
 		{#if r.direct.length !== 0}
 			<div class="my-4 flex flex-wrap gap-x-3 gap-y-3">
-				{#each r.direct as d, i (i)}
+				{#each r.direct as d}
 					<DirectConnection
 						{d}
 						onclick={() => {
@@ -80,7 +80,7 @@
 
 		{#if r.itineraries.length !== 0}
 			<div class="flex flex-col space-y-6 px-4 py-8">
-				{#each routingResponses as r, rI (rI)}
+				{#each routingResponses as r, rI}
 					{#await r}
 						<div class="flex items-center justify-center w-full">
 							<LoaderCircle class="animate-spin w-12 h-12 m-20" />
@@ -108,7 +108,7 @@
 								<div class="border-t w-full h-0"></div>
 							</div>
 						{/if}
-						{#each r.itineraries as it, i (i)}
+						{#each r.itineraries as it}
 							<button
 								onclick={() => {
 									selectItinerary(it);
@@ -122,7 +122,7 @@
 												isRealtime={it.legs[0].realTime}
 												timestamp={it.startTime}
 												scheduledTimestamp={it.legs[0].scheduledStartTime}
-												variant="realtime-show-always"
+												variant={'realtime-show-always'}
 												queriedTime={baseQuery?.query.time}
 											/>
 										</div>
@@ -133,7 +133,7 @@
 												isRealtime={it.legs[it.legs.length - 1].realTime}
 												timestamp={it.endTime}
 												scheduledTimestamp={it.legs[it.legs.length - 1].scheduledEndTime}
-												variant="realtime-show-always"
+												variant={'realtime-show-always'}
 												queriedTime={it.startTime}
 											/>
 										</div>
@@ -152,7 +152,7 @@
 									</div>
 									<Separator class="my-2" />
 									<div class="mt-4 flex flex-wrap gap-x-3 gap-y-3">
-										{#each it.legs.filter((l, i) => (i == 0 && l.duration > 1) || (i == it.legs.length - 1 && l.duration > 1) || l.routeShortName || l.mode != 'WALK') as l, i (i)}
+										{#each it.legs.filter((l, i) => (i == 0 && l.duration > 1) || (i == it.legs.length - 1 && l.duration > 1) || l.routeShortName || l.mode != 'WALK') as l}
 											{@render legSummary(l)}
 										{/each}
 									</div>
