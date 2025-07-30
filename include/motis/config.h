@@ -40,7 +40,7 @@ struct config {
     std::string host_{"0.0.0.0"};
     std::string port_{"8080"};
     std::string web_folder_{"ui"};
-    unsigned n_threads_{std::thread::hardware_concurrency()};
+    unsigned n_threads_{0U};
     std::optional<std::string> data_attribution_link_{};
   };
   std::optional<server> server_{};
@@ -67,13 +67,19 @@ struct config {
         }
         std::string url_;
         std::optional<headers_t> headers_{};
+
+        enum struct protocol { gtfsrt, auser, siri };
+        protocol protocol_{protocol::gtfsrt};
       };
 
       bool operator==(dataset const&) const = default;
 
       std::string path_;
       bool default_bikes_allowed_{false};
+      bool default_cars_allowed_{false};
+      bool extend_calendar_{false};
       std::optional<std::map<std::string, bool>> clasz_bikes_allowed_{};
+      std::optional<std::map<std::string, bool>> clasz_cars_allowed_{};
       std::optional<std::vector<rt>> rt_{};
       std::optional<std::string> default_timezone_{};
     };
@@ -95,6 +101,7 @@ struct config {
     bool extend_missing_footpaths_{false};
     std::uint16_t max_footpath_length_{15};
     double max_matching_distance_{25.0};
+    double preprocess_max_matching_distance_{0.0};
     std::optional<std::string> default_timezone_{};
     std::map<std::string, dataset> datasets_{};
     std::optional<std::filesystem::path> assistance_times_{};
@@ -109,6 +116,8 @@ struct config {
       bool ride_start_allowed_{true};
       bool ride_end_allowed_{true};
       bool ride_through_allowed_{true};
+      std::optional<bool> station_parking_{};
+      std::optional<std::string> return_constraint_{};
     };
 
     struct feed {
@@ -141,6 +150,8 @@ struct config {
     std::optional<headers_t> headers_{};
   };
 
+  std::size_t n_threads() const;
+
   std::optional<elevators> const& get_elevators() const;
 
   std::variant<bool, std::optional<elevators>> elevators_{false};
@@ -153,6 +164,19 @@ struct config {
   std::optional<street_routing> get_street_routing() const;
 
   std::variant<bool, std::optional<street_routing>> street_routing_{false};
+
+  struct limits {
+    bool operator==(limits const&) const = default;
+    unsigned stoptimes_max_results_{256U};
+    unsigned plan_max_results_{256U};
+    unsigned plan_max_search_window_minutes_{5760U};
+    unsigned stops_max_results_{2048U};
+    unsigned onetoall_max_results_{65535U};
+    unsigned onetoall_max_travel_minutes_{90U};
+    unsigned routing_max_timeout_seconds_{90U};
+    unsigned gtfsrt_expose_max_trip_updates_{100U};
+  };
+  std::optional<limits> limits_{};
 
   bool osr_footpath_{false};
   bool geocoding_{false};

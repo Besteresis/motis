@@ -3,13 +3,28 @@ import { twMerge } from 'tailwind-merge';
 import { browser } from '$app/environment';
 import { pushState, replaceState } from '$app/navigation';
 import { page } from '$app/state';
-import { trip } from '$lib/openapi';
+import { trip } from '$lib/api/openapi';
+import { joinInterlinedLegs } from './preprocessItinerary';
+import { language } from './i18n/translation';
 
 export function cn(...inputs: ClassValue[]) {
 	return twMerge(clsx(inputs));
 }
 
 const urlParams = browser ? new URLSearchParams(window.location.search) : undefined;
+
+export const getUrlArray = (key: string, defaultValue?: string[]): string[] => {
+	if (urlParams) {
+		const value = urlParams.get(key);
+		if (value != null) {
+			return value.split(',').filter((m) => m.length);
+		}
+	}
+	if (defaultValue) {
+		return defaultValue;
+	}
+	return [];
+};
 
 export const preserveFromUrl = (
 	// eslint-disable-next-line
@@ -24,12 +39,13 @@ export const preserveFromUrl = (
 export const pushStateWithQueryString = (
 	// eslint-disable-next-line
 	queryParams: Record<string, any>,
-	// eslint-disable-next-line
+
 	newState: App.PageState,
 	replace: boolean = false
 ) => {
 	preserveFromUrl(queryParams, 'debug');
 	preserveFromUrl(queryParams, 'dark');
+	preserveFromUrl(queryParams, 'light');
 	preserveFromUrl(queryParams, 'motis');
 	const params = new URLSearchParams(queryParams);
 	const updateState = replace ? replaceState : pushState;
@@ -72,12 +88,15 @@ export const onClickStop = (
 };
 
 export const onClickTrip = async (tripId: string, replace: boolean = false) => {
-	const { data: itinerary, error } = await trip({ query: { tripId } });
+	const { data: itinerary, error } = await trip({
+		query: { tripId, joinInterlinedLegs: false, language }
+	});
 	if (error) {
 		console.log(error);
 		alert(String((error as Record<string, unknown>).error?.toString() ?? error));
 		return;
 	}
+	joinInterlinedLegs(itinerary!);
 	pushStateWithQueryString(
 		{ tripId },
 		{

@@ -9,6 +9,8 @@ struct cache;
 
 namespace osr {
 
+struct location;
+struct sharing_data;
 struct ways;
 struct platforms;
 struct lookup;
@@ -43,6 +45,8 @@ struct config;
 struct railviz_static_index;
 struct railviz_rt_index;
 struct elevators;
+struct metrics_registry;
+struct way_matches_storage;
 struct data;
 
 namespace odm {
@@ -51,11 +55,12 @@ struct bounds;
 
 namespace gbfs {
 struct gbfs_data;
-struct gbfs_provider;
-struct gbfs_products_ref;
 struct gbfs_routing_data;
-struct provider_routing_data;
-struct products_routing_data;
 }  // namespace gbfs
+
+namespace flex {
+struct flex_routing_data;
+struct flex_areas;
+}  // namespace flex
 
 }  // namespace motis

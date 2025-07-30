@@ -6,6 +6,7 @@
 #include "utl/verify.h"
 
 #include "nigiri/common/delta_t.h"
+#include "nigiri/routing/limits.h"
 #include "nigiri/routing/one_to_all.h"
 #include "nigiri/routing/query.h"
 #include "nigiri/types.h"
@@ -13,6 +14,7 @@
 #include "motis-api/motis-api.h"
 #include "motis/endpoints/routing.h"
 #include "motis/gbfs/routing_data.h"
+#include "motis/metrics_registry.h"
 #include "motis/place.h"
 #include "motis/timetable/modes_to_clasz_mask.h"
 
@@ -20,14 +22,15 @@ namespace motis::ep {
 
 namespace n = nigiri;
 
-constexpr auto const kMaxResults = 65535U;
-constexpr auto const kMaxTravelMinutes = 90U;
-
 api::Reachable one_to_all::operator()(boost::urls::url_view const& url) const {
+  metrics_->routing_requests_.Increment();
+
+  auto const max_travel_minutes =
+      config_.limits_.value().onetoall_max_travel_minutes_;
   auto const query = api::oneToAll_params{url.params()};
-  utl::verify(query.maxTravelTime_ <= kMaxTravelMinutes,
+  utl::verify(query.maxTravelTime_ <= max_travel_minutes,
               "maxTravelTime too large: {} > {}", query.maxTravelTime_,
-              kMaxTravelMinutes);
+              max_travel_minutes);
   if (query.maxTransfers_.has_value()) {
     utl::verify(query.maxTransfers_ >= 0U, "maxTransfers < 0: {}",
                 *query.maxTransfers_);
@@ -39,7 +42,6 @@ api::Reachable one_to_all::operator()(boost::urls::url_view const& url) const {
   auto const unreachable = query.arriveBy_
                                ? n::kInvalidDelta<n::direction::kBackward>
                                : n::kInvalidDelta<n::direction::kForward>;
-  auto const rtt = rt_->rtt_.get();
 
   auto const make_place = [&](place_t const& p, n::unixtime_t const t,
                               n::event_type const ev) {
@@ -66,20 +68,22 @@ api::Reachable one_to_all::operator()(boost::urls::url_view const& url) const {
       query.arriveBy_ ? osr::direction::kBackward : osr::direction::kForward;
 
   auto const r =
-      routing{config_,   w_,       l_,  pl_,     elevations_, &tt_,   &tags_,
-              loc_tree_, matches_, rt_, nullptr, gbfs_,       nullptr};
+      routing{config_, w_,        l_,      pl_,      elevations_,  &tt_,
+              &tags_,  loc_tree_, fa_,     matches_, way_matches_, rt_,
+              nullptr, gbfs_,     nullptr, metrics_};
   auto gbfs_rd = gbfs::gbfs_routing_data{w_, l_, gbfs_};
 
-  auto const q = n::routing::query{
+  auto q = n::routing::query{
       .start_time_ = time,
       .start_match_mode_ = get_match_mode(one),
       .start_ = r.get_offsets(
-          one, one_dir, one_modes, std::nullopt, std::nullopt, std::nullopt,
-          query.pedestrianProfile_, query.elevationCosts_, one_max_time,
-          query.maxMatchingDistance_, gbfs_rd),
-      .td_start_ = r.get_td_offsets(
-          rt_->e_.get(), one, one_dir, one_modes, query.pedestrianProfile_,
-          query.elevationCosts_, query.maxMatchingDistance_, one_max_time),
+          nullptr, one, one_dir, one_modes, std::nullopt, std::nullopt,
+          std::nullopt, false, query.pedestrianProfile_, query.elevationCosts_,
+          one_max_time, query.maxMatchingDistance_, gbfs_rd),
+      .td_start_ =
+          r.get_td_offsets(nullptr, nullptr, one, one_dir, one_modes,
+                           query.pedestrianProfile_, query.elevationCosts_,
+                           query.maxMatchingDistance_, one_max_time, time),
       .max_transfers_ = static_cast<std::uint8_t>(
           query.maxTransfers_.value_or(n::routing::kMaxTransfers)),
       .max_travel_time_ = max_travel_time,
@@ -92,6 +96,7 @@ api::Reachable one_to_all::operator()(boost::urls::url_view const& url) const {
               : 0U),
       .allowed_claszes_ = to_clasz_mask(query.transitModes_),
       .require_bike_transport_ = query.requireBikeTransport_,
+      .require_car_transport_ = query.requireCarTransport_,
       .transfer_time_settings_ =
           n::routing::transfer_time_settings{
               .default_ = (query.minTransferTime_ == 0 &&
@@ -102,10 +107,14 @@ api::Reachable one_to_all::operator()(boost::urls::url_view const& url) const {
               .factor_ = static_cast<float>(query.transferTimeFactor_)},
   };
 
+  if (tt_.locations_.footpaths_out_.at(q.prf_idx_).empty()) {
+    q.prf_idx_ = 0U;
+  }
+
   auto const state =
       query.arriveBy_
-          ? n::routing::one_to_all<n::direction::kBackward>(tt_, rtt, q)
-          : n::routing::one_to_all<n::direction::kForward>(tt_, rtt, q);
+          ? n::routing::one_to_all<n::direction::kBackward>(tt_, nullptr, q)
+          : n::routing::one_to_all<n::direction::kForward>(tt_, nullptr, q);
 
   auto reachable = nigiri::bitvec{tt_.n_locations()};
   for (auto i = 0U; i != tt_.n_locations(); ++i) {
@@ -113,8 +122,10 @@ api::Reachable one_to_all::operator()(boost::urls::url_view const& url) const {
       reachable.set(i);
     }
   }
-  utl::verify(reachable.count() <= kMaxResults, "too many results: {} > {}",
-              reachable.count(), kMaxResults);
+
+  auto const max_results = config_.limits_.value().onetoall_max_results_;
+  utl::verify(reachable.count() <= max_results, "too many results: {} > {}",
+              reachable.count(), max_results);
 
   auto all = std::vector<api::ReachablePlace>{};
   all.reserve(reachable.count());

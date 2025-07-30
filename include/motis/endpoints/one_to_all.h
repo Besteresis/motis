@@ -19,9 +19,12 @@ struct one_to_all {
   nigiri::timetable const& tt_;
   std::shared_ptr<rt> const& rt_;
   tag_lookup const& tags_;
+  flex::flex_areas const* fa_;
   point_rtree<nigiri::location_idx_t> const* loc_tree_;
   platform_matches_t const* matches_;
+  way_matches_storage const* way_matches_;
   std::shared_ptr<gbfs::gbfs_data> const& gbfs_;
+  metrics_registry* metrics_;
 };
 
 }  // namespace motis::ep

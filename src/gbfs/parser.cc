@@ -156,9 +156,10 @@ std::optional<vehicle_type_idx_t> get_vehicle_type(
         .idx_ = idx,
         .form_factor_ = ff,
         .propulsion_type_ = pt,
-        .return_constraint_ = start_type == vehicle_start_type::kStation
-                                  ? return_constraint::kAnyStation
-                                  : return_constraint::kFreeFloating,
+        .return_constraint_ = provider.default_return_constraint_.value_or(
+            start_type == vehicle_start_type::kStation
+                ? return_constraint::kAnyStation
+                : return_constraint::kFreeFloating),
         .known_return_constraint_ = false});
     provider.vehicle_types_map_[{vehicle_type_id, start_type}] = idx;
     return idx;
@@ -241,9 +242,6 @@ void load_station_status(gbfs_provider& provider, json::value const& root) {
     auto const& station_obj = s.as_object();
     auto const station_id =
         static_cast<std::string>(station_obj.at("station_id").as_string());
-    auto const num_vehicles_available_key = version == gbfs_version::k3
-                                                ? "num_vehicles_available"
-                                                : "num_bikes_available";
 
     auto const station_it = provider.stations_.find(station_id);
     if (station_it == end(provider.stations_)) {
@@ -252,10 +250,19 @@ void load_station_status(gbfs_provider& provider, json::value const& root) {
 
     auto& station = station_it->second;
     station.status_ = station_status{
-        .num_vehicles_available_ =
-            station_obj.at(num_vehicles_available_key).to_number<unsigned>(),
+        .num_vehicles_available_ = 0U,
         .is_renting_ = get_bool(version, station_obj, "is_renting"),
         .is_returning_ = get_bool(version, station_obj, "is_returning")};
+
+    if (station_obj.contains("num_vehicles_available")) {
+      // GBFS 3.x (but some 2.x feeds use this as well)
+      station.status_.num_vehicles_available_ =
+          station_obj.at("num_vehicles_available").to_number<unsigned>();
+    } else if (station_obj.contains("num_bikes_available")) {
+      // GBFS 2.x
+      station.status_.num_vehicles_available_ =
+          station_obj.at("num_bikes_available").to_number<unsigned>();
+    }
 
     if (station_obj.contains("vehicle_types_available")) {
       auto const& vta = station_obj.at("vehicle_types_available").as_array();
@@ -348,17 +355,21 @@ propulsion_type parse_propulsion_type(std::string_view const s) {
 }
 
 std::optional<return_constraint> parse_return_constraint(
+    std::string_view const s) {
+  switch (cista::hash(s)) {
+    case cista::hash("any_station"): return return_constraint::kAnyStation;
+    case cista::hash("roundtrip_station"):
+      return return_constraint::kRoundtripStation;
+    case cista::hash("free_floating"):
+    case cista::hash("hybrid"): return return_constraint::kFreeFloating;
+    default: return {};
+  }
+}
+
+std::optional<return_constraint> parse_return_constraint(
     json::object const& vt) {
   if (vt.contains("return_constraint")) {
-    switch (cista::hash(static_cast<std::string_view>(
-        vt.at("return_constraint").as_string()))) {
-      case cista::hash("any_station"): return return_constraint::kAnyStation;
-      case cista::hash("roundtrip_station"):
-        return return_constraint::kRoundtripStation;
-      case cista::hash("free_floating"):
-      case cista::hash("hybrid"):
-      default: return return_constraint::kFreeFloating;
-    }
+    return parse_return_constraint(vt.at("return_constraint").as_string());
   }
   return {};
 }

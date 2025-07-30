@@ -245,30 +245,35 @@ export type PedestrianProfile = 'FOOT' | 'WHEELCHAIR';
  *
  * - `WALK`
  * - `BIKE`
- * - `RENTAL` Experimental. Expect unannounced breaking changes (without version bumps).
+ * - `RENTAL` Experimental. Expect unannounced breaking changes (without version bumps) for all parameters and returned structs.
  * - `CAR`
- * - `CAR_PARKING`
- * - `ODM`
+ * - `CAR_PARKING` Experimental. Expect unannounced breaking changes (without version bumps) for all parameters and returned structs.
+ * - `CAR_DROPOFF` Experimental. Expect unannounced breaking changes (without version bumps) for all perameters and returned structs.
+ * - `ODM` on-demand taxis from the Prima+ÖV Project
+ * - `FLEX` flexible transports
  *
  * # Transit modes
  *
- * - `TRANSIT`: translates to `RAIL,SUBWAY,TRAM,BUS,FERRY,AIRPLANE,COACH`
+ * - `TRANSIT`: translates to `RAIL,TRAM,BUS,FERRY,AIRPLANE,COACH,CABLE_CAR,FUNICULAR,AREAL_LIFT,OTHER`
  * - `TRAM`: trams
  * - `SUBWAY`: subway trains
  * - `FERRY`: ferries
  * - `AIRPLANE`: airline flights
  * - `BUS`: short distance buses (does not include `COACH`)
  * - `COACH`: long distance buses (does not include `BUS`)
- * - `RAIL`: translates to `HIGHSPEED_RAIL,LONG_DISTANCE_RAIL,NIGHT_RAIL,REGIONAL_RAIL,REGIONAL_FAST_RAIL`
+ * - `RAIL`: translates to `HIGHSPEED_RAIL,LONG_DISTANCE,NIGHT_RAIL,REGIONAL_RAIL,REGIONAL_FAST_RAIL,METRO,SUBWAY`
  * - `METRO`: metro trains
  * - `HIGHSPEED_RAIL`: long distance high speed trains (e.g. TGV)
  * - `LONG_DISTANCE`: long distance inter city trains
  * - `NIGHT_RAIL`: long distance night trains
  * - `REGIONAL_FAST_RAIL`: regional express routes that skip low traffic stops to be faster
  * - `REGIONAL_RAIL`: regional train
+ * - `CABLE_CAR`: Cable tram. Used for street-level rail cars where the cable runs beneath the vehicle (e.g., cable car in San Francisco).
+ * - `FUNICULAR`: Funicular. Any rail system designed for steep inclines.
+ * - `AREAL_LIFT`: Aerial lift, suspended cable car (e.g., gondola lift, aerial tramway). Cable transport where cabins, cars, gondolas or open chairs are suspended by means of one or more cables.
  *
  */
-export type Mode = 'WALK' | 'BIKE' | 'RENTAL' | 'CAR' | 'CAR_PARKING' | 'ODM' | 'TRANSIT' | 'TRAM' | 'SUBWAY' | 'FERRY' | 'AIRPLANE' | 'METRO' | 'BUS' | 'COACH' | 'RAIL' | 'HIGHSPEED_RAIL' | 'LONG_DISTANCE' | 'NIGHT_RAIL' | 'REGIONAL_FAST_RAIL' | 'REGIONAL_RAIL' | 'OTHER';
+export type Mode = 'WALK' | 'BIKE' | 'RENTAL' | 'CAR' | 'CAR_PARKING' | 'CAR_DROPOFF' | 'ODM' | 'FLEX' | 'TRANSIT' | 'TRAM' | 'SUBWAY' | 'FERRY' | 'AIRPLANE' | 'METRO' | 'BUS' | 'COACH' | 'RAIL' | 'HIGHSPEED_RAIL' | 'LONG_DISTANCE' | 'NIGHT_RAIL' | 'REGIONAL_FAST_RAIL' | 'REGIONAL_RAIL' | 'CABLE_CAR' | 'FUNICULAR' | 'AREAL_LIFT' | 'OTHER';
 
 /**
  * - `NORMAL` - latitude / longitude coordinate or address
@@ -332,6 +337,10 @@ export type Place = {
      *
      */
     track?: string;
+    /**
+     * description of the location that provides more detailed information
+     */
+    description?: string;
     vertexType?: VertexType;
     /**
      * Type of pickup. It could be disallowed due to schedule, skipped stops or cancellations.
@@ -349,6 +358,22 @@ export type Place = {
      * Alerts for this stop.
      */
     alerts?: Array<Alert>;
+    /**
+     * for `FLEX` transports, the flex location area or location group name
+     */
+    flex?: string;
+    /**
+     * for `FLEX` transports, the flex location area ID or location group ID
+     */
+    flexId?: string;
+    /**
+     * Time that on-demand service becomes available
+     */
+    flexStartPickupDropOffWindow?: string;
+    /**
+     * Time that on-demand service ends
+     */
+    flexEndPickupDropOffWindow?: string;
 };
 
 /**
@@ -425,9 +450,13 @@ export type StopTime = {
      */
     pickupDropoffType: PickupDropoffType;
     /**
-     * Whether the departure/arrival is cancelled due to the realtime situation.
+     * Whether the departure/arrival is cancelled due to the realtime situation (either because the stop is skipped or because the entire trip is cancelled).
      */
     cancelled: boolean;
+    /**
+     * Whether the entire trip is cancelled due to the realtime situation.
+     */
+    tripCancelled: boolean;
     /**
      * Filename and line number where this trip is from
      */
@@ -551,6 +580,24 @@ export type StepInstruction = {
      *
      */
     area: boolean;
+    /**
+     * Indicates that a fee must be paid by general traffic to use a road, road bridge or road tunnel.
+     */
+    toll?: boolean;
+    /**
+     * Experimental. Indicates whether access to this part of the route is restricted.
+     * See: https://wiki.openstreetmap.org/wiki/Conditional_restrictions
+     *
+     */
+    accessRestriction?: string;
+    /**
+     * incline in meters across this path segment
+     */
+    elevationUp?: number;
+    /**
+     * decline in meters across this path segment
+     */
+    elevationDown?: number;
 };
 
 export type RentalFormFactor = 'BICYCLE' | 'CARGO_BICYCLE' | 'CAR' | 'MOPED' | 'SCOOTER_STANDING' | 'SCOOTER_SEATED' | 'OTHER';
@@ -713,6 +760,13 @@ export type Leg = {
      * Alerts for this stop.
      */
     alerts?: Array<Alert>;
+    /**
+     * If set, this attribute indicates that this trip has been expanded
+     * beyond the feed end date (enabled by config flag `timetable.dataset.extend_calendar`)
+     * by looping active weekdays, e.g. from calendar.txt in GTFS.
+     *
+     */
+    loopedCalendarSince?: string;
 };
 
 export type RiderCategory = {
@@ -730,6 +784,14 @@ export type RiderCategory = {
     eligibilityUrl?: string;
 };
 
+/**
+ * - `NONE`: No fare media involved (e.g., cash payment)
+ * - `PAPER_TICKET`: Physical paper ticket
+ * - `TRANSIT_CARD`: Physical transit card with stored value
+ * - `CONTACTLESS_EMV`: cEMV (contactless payment)
+ * - `MOBILE_APP`: Mobile app with virtual transit cards/passes
+ *
+ */
 export type FareMediaType = 'NONE' | 'PAPER_TICKET' | 'TRANSIT_CARD' | 'CONTACTLESS_EMV' | 'MOBILE_APP';
 
 export type FareMedia = {
@@ -783,7 +845,7 @@ export type FareTransferRule = 'A_AB' | 'A_AB_B' | 'AB';
  */
 export type FareTransfer = {
     rule?: FareTransferRule;
-    transferProduct?: FareProduct;
+    transferProducts?: Array<FareProduct>;
     /**
      * Lists all valid fare products for the effective fare legs.
      * This is an `array<array<FareProduct>>` where the inner array
@@ -793,7 +855,7 @@ export type FareTransfer = {
      * and the inner array as OR (you can choose which ticket to buy)
      *
      */
-    effectiveFareLegProducts: Array<Array<FareProduct>>;
+    effectiveFareLegProducts: Array<Array<Array<FareProduct>>>;
 };
 
 export type Itinerary = {
@@ -824,37 +886,37 @@ export type Itinerary = {
 };
 
 /**
- * footpath from one location to another
+ * transfer from one location to another
  */
-export type Footpath = {
+export type Transfer = {
     to: Place;
     /**
-     * optional; missing if the GTFS did not contain a footpath
-     * footpath duration in minutes according to GTFS (+heuristics)
+     * optional; missing if the GTFS did not contain a transfer
+     * transfer duration in minutes according to GTFS (+heuristics)
      *
      */
     default?: number;
     /**
      * optional; missing if no path was found (timetable / osr)
-     * footpath duration in minutes for the foot profile
+     * transfer duration in minutes for the foot profile
      *
      */
     foot?: number;
     /**
      * optional; missing if no path was found with foot routing
-     * footpath duration in minutes for the foot profile
+     * transfer duration in minutes for the foot profile
      *
      */
     footRouted?: number;
     /**
      * optional; missing if no path was found with the wheelchair profile
-     * footpath duration in minutes for the wheelchair profile
+     * transfer duration in minutes for the wheelchair profile
      *
      */
     wheelchair?: number;
     /**
      * optional; missing if no path was found with the wheelchair profile
-     * footpath duration in minutes for the wheelchair profile
+     * transfer duration in minutes for the wheelchair profile
      *
      */
     wheelchairRouted?: number;
@@ -864,6 +926,12 @@ export type Footpath = {
      *
      */
     wheelchairUsesElevator?: boolean;
+    /**
+     * optional; missing if no path was found with car routing
+     * transfer duration in minutes for the car profile
+     *
+     */
+    car?: number;
 };
 
 export type PlanData = {
@@ -900,6 +968,8 @@ export type PlanData = {
          * Note: Transit connections that are slower than the fastest direct connection will not show up.
          * This is being used as a cut-off during transit routing to speed up the search.
          * To prevent this, it's possible to send two separate requests (one with only `transitModes` and one with only `directModes`).
+         *
+         * Note: the output `direct` array will stay empty if the input param `maxDirectTime` makes any direct trip impossible.
          *
          * Only non-transit modes such as `WALK`, `BIKE`, `CAR`, `BIKE_SHARING`, etc. can be used.
          *
@@ -959,11 +1029,19 @@ export type PlanData = {
         elevationCosts?: ElevationCosts;
         /**
          * Optional. Experimental. Default is `1.0`.
-         * Factor with which the duration of the fastest direct connection is multiplied.
-         * Values > 1.0 allow connections that are slower than the fastest direct connection to be found.
+         * Factor with which the duration of the fastest direct non-public-transit connection is multiplied.
+         * Values > 1.0 allow transit connections that are slower than the fastest direct non-public-transit connection to be found.
          *
          */
         fastestDirectFactor?: number;
+        /**
+         * Optional.
+         * Factor with which the duration of the fastest slowDirect connection is multiplied.
+         * Values > 1.0 allow connections that are slower than the fastest direct connection to be found.
+         * Values < 1.0 will return all slowDirect connections.
+         *
+         */
+        fastestSlowDirectFactor?: number;
         /**
          * \`latitude,longitude[,level]\` tuple with
          * - latitude and longitude in degrees
@@ -975,6 +1053,52 @@ export type PlanData = {
          *
          */
         fromPlace: string;
+        /**
+         * Experimental. Expect unannounced breaking changes (without version bumps).
+         *
+         * Optional. Default is `false`.
+         *
+         * If set to `true`, the routing will ignore rental return constraints for direct connections,
+         * allowing the rental vehicle to be parked anywhere.
+         *
+         */
+        ignoreDirectRentalReturnConstraints?: boolean;
+        /**
+         * Experimental. Expect unannounced breaking changes (without version bumps).
+         *
+         * Optional. Default is `false`.
+         *
+         * If set to `true`, the routing will ignore rental return constraints for the part from the last transit stop to the `to` coordinate,
+         * allowing the rental vehicle to be parked anywhere.
+         *
+         */
+        ignorePostTransitRentalReturnConstraints?: boolean;
+        /**
+         * Experimental. Expect unannounced breaking changes (without version bumps).
+         *
+         * Optional. Default is `false`.
+         *
+         * If set to `true`, the routing will ignore rental return constraints for the part from the `from` coordinate to the first transit stop,
+         * allowing the rental vehicle to be parked anywhere.
+         *
+         */
+        ignorePreTransitRentalReturnConstraints?: boolean;
+        /**
+         * Optional. Default is `true`.
+         *
+         * Controls if a journey section with stay-seated transfers is returned:
+         * - `joinInterlinedLegs=false`: as several legs (full information about all trip numbers, headsigns, etc.).
+         * Legs that do not require a transfer (stay-seated transfer) are marked with `interlineWithPreviousLeg=true`.
+         * - `joinInterlinedLegs=true` (default behavior): as only one joined leg containing all stops
+         *
+         */
+        joinInterlinedLegs?: boolean;
+        /**
+         * language tags as used in OpenStreetMap / GTFS
+         * (usually BCP-47 / ISO 639-1, or ISO 639-2 if there's no ISO 639-1)
+         *
+         */
+        language?: string;
         /**
          * Optional. Experimental. Number of luggage pieces; base unit: airline cabin luggage (e.g. for ODM or price calculation)
          *
@@ -1006,7 +1130,12 @@ export type PlanData = {
          */
         maxPreTransitTime?: number;
         /**
-         * The maximum number of allowed transfers.
+         * The maximum number of allowed transfers (i.e. interchanges between transit legs,
+         * pre- and postTransit do not count as transfers).
+         * `maxTransfers=0` searches for direct transit connections without any transfers.
+         * If you want to search only for non-transit connections (`FOOT`, `CAR`, etc.),
+         * send an empty `transitModes` parameter instead.
+         *
          * If not provided, the routing uses the server-side default value
          * which is hardcoded and very high to cover all use cases.
          *
@@ -1014,6 +1143,9 @@ export type PlanData = {
          * optimal (e.g. the fastest) journeys not being found.
          * If this value is too low to reach the destination at all,
          * it can lead to slow routing performance.
+         *
+         * In plan endpoints before v3, the behavior is off by one,
+         * i.e. `maxTransfers=0` only returns non-transit connections.
          *
          */
         maxTransfers?: number;
@@ -1148,6 +1280,13 @@ export type PlanData = {
          */
         requireBikeTransport?: boolean;
         /**
+         * Optional. Default is `false`.
+         *
+         * If set to `true`, all used transit trips are required to allow car carriage.
+         *
+         */
+        requireCarTransport?: boolean;
+        /**
          * Optional. Default is 2 hours which is `7200`.
          *
          * The length of the search-window in seconds. Default value two hours.
@@ -1157,6 +1296,10 @@ export type PlanData = {
          *
          */
         searchWindow?: number;
+        /**
+         * Optional. Experimental. Adds overtaken direct public transit connections.
+         */
+        slowDirect?: boolean;
         /**
          * Optional. Defaults to the current time.
          *
@@ -1244,6 +1387,10 @@ export type PlanData = {
          * Optional. Experimental. If set to true, the response will contain fare information.
          */
         withFares?: boolean;
+        /**
+         * Optional. Include intermediate stops where passengers can not alight/board according to schedule.
+         */
+        withScheduledSkippedStops?: boolean;
     };
 };
 
@@ -1400,7 +1547,12 @@ export type OneToAllData = {
          */
         maxPreTransitTime?: number;
         /**
-         * The maximum number of allowed transfers.
+         * The maximum number of allowed transfers (i.e. interchanges between transit legs,
+         * pre- and postTransit do not count as transfers).
+         * `maxTransfers=0` searches for direct transit connections without any transfers.
+         * If you want to search only for non-transit connections (`FOOT`, `CAR`, etc.),
+         * send an empty `transitModes` parameter instead.
+         *
          * If not provided, the routing uses the server-side default value
          * which is hardcoded and very high to cover all use cases.
          *
@@ -1408,6 +1560,9 @@ export type OneToAllData = {
          * optimal (e.g. the fastest) journeys not being found.
          * If this value is too low to reach the destination at all,
          * it can lead to slow routing performance.
+         *
+         * In plan endpoints before v3, the behavior is off by one,
+         * i.e. `maxTransfers=0` only returns non-transit connections.
          *
          */
         maxTransfers?: number;
@@ -1466,6 +1621,13 @@ export type OneToAllData = {
          *
          */
         requireBikeTransport?: boolean;
+        /**
+         * Optional. Default is `false`.
+         *
+         * If set to `true`, all used transit trips are required to allow car carriage.
+         *
+         */
+        requireCarTransport?: boolean;
         /**
          * Optional. Defaults to the current time.
          *
@@ -1565,9 +1727,29 @@ export type GeocodeError = unknown;
 export type TripData = {
     query: {
         /**
+         * Optional. Default is `true`.
+         *
+         * Controls if a trip with stay-seated transfers is returned:
+         * - `joinInterlinedLegs=false`: as several legs (full information about all trip numbers, headsigns, etc.).
+         * Legs that do not require a transfer (stay-seated transfer) are marked with `interlineWithPreviousLeg=true`.
+         * - `joinInterlinedLegs=true` (default behavior): as only one joined leg containing all stops
+         *
+         */
+        joinInterlinedLegs?: boolean;
+        /**
+         * language tags as used in OpenStreetMap / GTFS
+         * (usually BCP-47 / ISO 639-1, or ISO 639-2 if there's no ISO 639-1)
+         *
+         */
+        language?: string;
+        /**
          * trip identifier (e.g. from an itinerary leg or stop event)
          */
         tripId: string;
+        /**
+         * Optional. Include intermediate stops where passengers can not alight/board according to schedule.
+         */
+        withScheduledSkippedStops?: boolean;
     };
 };
 
@@ -1598,6 +1780,20 @@ export type StoptimesData = {
          *
          */
         direction?: 'EARLIER' | 'LATER';
+        /**
+         * Optional. Default is `false`.
+         *
+         * If set to `true`, only stations that are phyiscally in the radius are considered.
+         * If set to `false`, additionally to the stations in the radius, equivalences with the same name and children are considered.
+         *
+         */
+        exactRadius?: boolean;
+        /**
+         * language tags as used in OpenStreetMap / GTFS
+         * (usually BCP-47 / ISO 639-1, or ISO 639-2 if there's no ISO 639-1)
+         *
+         */
+        language?: string;
         /**
          * Optional. Default is all transit modes.
          *
@@ -1636,6 +1832,10 @@ export type StoptimesData = {
          *
          */
         time?: string;
+        /**
+         * Optional. Include stoptimes where passengers can not alight/board according to schedule.
+         */
+        withScheduledSkippedStops?: boolean;
     };
 };
 
@@ -1644,6 +1844,10 @@ export type StoptimesResponse = ({
      * list of stop times
      */
     stopTimes: Array<StopTime>;
+    /**
+     * metadata of the requested stop
+     */
+    place: Place;
     /**
      * Use the cursor to get the previous page of results. Insert the cursor into the request and post it to get the previous page.
      * The previous page is a set of stop times BEFORE the first stop time in the result.
@@ -1740,7 +1944,7 @@ export type LevelsResponse = (Array<(number)>);
 
 export type LevelsError = unknown;
 
-export type FootpathsData = {
+export type TransfersData = {
     query: {
         /**
          * location id
@@ -1749,12 +1953,24 @@ export type FootpathsData = {
     };
 };
 
-export type FootpathsResponse = ({
+export type TransfersResponse = ({
     place: Place;
     /**
-     * all outgoing footpaths of this location
+     * true if the server has foot transfers computed
      */
-    footpaths: Array<Footpath>;
+    hasFootTransfers: boolean;
+    /**
+     * true if the server has wheelchair transfers computed
+     */
+    hasWheelchairTransfers: boolean;
+    /**
+     * true if the server has car transfers computed
+     */
+    hasCarTransfers: boolean;
+    /**
+     * all outgoing transfers of this location
+     */
+    transfers: Array<Transfer>;
 });
 
-export type FootpathsError = unknown;
+export type TransfersError = unknown;
