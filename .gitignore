@@ -3,7 +3,6 @@
 /.pkg.mutex
 /.clang-tidy
 /.idea
-/deps
 *.zip
 *.bin
 *.pbf
