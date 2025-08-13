@@ -4,11 +4,6 @@ project(motis LANGUAGES C CXX ASM)
 
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
-if(MSVC)
-    add_compile_options(/EHsc)
-endif()
-
-
 option(MOTIS_MIMALLOC "use mimalloc" OFF)
 
 if (NOT DEFINED CMAKE_MSVC_RUNTIME_LIBRARY)
